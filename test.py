@@ -28,9 +28,14 @@ class Instruction:
         self.op = parts[0]
 
         # Parse based on operation type
-        if self.op in ["ADD", "SUB", "MUL", "DIV"]:
+        if self.op in ["ADD", "ADDI", "SUB", "MUL", "DIV"]:
             # For arithmetic instructions
-            self.dest, self.src1, self.src2 = parts[1], parts[2], parts[3]
+            if self.op[-1] == "I":
+                self.op = self.op[:-1]
+                # For immediate addition
+                self.dest, self.src1, self.immediate = parts[1], parts[2], parts[3][1:]
+            else:
+                self.dest, self.src1, self.src2 = parts[1], parts[2], parts[3]
         elif self.op in ["STORE", "LOAD"]:
             # For memory operations
             self.src1, offset_reg = parts[1], parts[2]
@@ -74,7 +79,7 @@ class ReservationStation:
 
     # Load an instruction into the reservation station
     def load_instruction(self, instruction):
-        self.instruction = Instruction(instruction)  # Parse and load the instruction
+        self.instruction = instruction  # Load the instruction
         self.stage = 'Issue'           # Set the initial stage to 'Issue'
         self.remaining_cycles = self.execution_time + 1  # Set the remaining cycles for execution
 
@@ -137,18 +142,17 @@ class ReservationStationManager:
     def try_issue_instruction(self):
         # Try to issue the first instruction in the queue if there are no WAW hazards
         if self.instruction_queue:
-            instruction = self.instruction_queue[0]
-            op_type, dest, src1, src2 = instruction.replace(',', '').split()
-            write_Reg = self.registers[dest]
+            instruction = Instruction(self.instruction_queue[0])  # Parse and load the instruction
+            write_Reg = self.registers[instruction.dest]
             if write_Reg.get_write_status():
                 return None  # Stall due to WAW hazard
-
+            
             for name, station in self.stations.items():
-                if station.op_type == op_type and not station.busy:
-                    self.instruction_queue.pop(0)
+                if station.op_type == instruction.op and not station.busy:
                     station.load_instruction(instruction)
+                    self.instruction_queue.pop(0)
                     print(station.name)
-                    self.registers[dest].set_write_status(station.name)
+                    self.registers[instruction.dest].set_write_status(station.name)
                     station.busy = True
                     return station
         return None
@@ -161,11 +165,15 @@ class ReservationStationManager:
             self.write_stage_station.reset()
             self.write_stage_station = None
 
+        
+        # TODO: add support for immediate values
+
         start_next_issue = True
         # Handle the issue stage station
         if self.issue_stage_station:
             #Stall execution if RAW hazard
-            if not self.registers[self.issue_stage_station.instruction.src1].get_write_status() and not self.registers[self.issue_stage_station.instruction.src2].get_write_status():
+            if not self.registers[self.issue_stage_station.instruction.src1].get_write_status() and \
+                not (self.issue_stage_station.instruction.src2 != None and self.registers[self.issue_stage_station.instruction.src2].get_write_status()):
                 self.issue_stage_station.instruction.Vj = self.registers[self.issue_stage_station.instruction.src1].value
                 self.issue_stage_station.instruction.Vk = self.registers[self.issue_stage_station.instruction.src2].value
                 self.issue_stage_station.instruction.Qj = None
@@ -174,17 +182,22 @@ class ReservationStationManager:
                 self.issue_stage_station = None
             else:
                 start_next_issue = False
+            
+            if self.issue_stage_station.instruction.src2 == None:
+                self.issue_stage_station.instruction.Vk = self.issue_stage_station.instruction.immediate
                 
 
         # Attempt to issue an instruction if possible
         if start_next_issue:
             self.issue_stage_station = self.try_issue_instruction()
+            # waiting for reservation stations to produce the required values
             if self.issue_stage_station:
                 if self.registers[self.issue_stage_station.instruction.src1].get_write_status():
                     self.issue_stage_station.instruction.Vj = self.issue_stage_station.instruction.src1
                     self.issue_stage_station.instruction.Qj = self.registers[self.issue_stage_station.instruction.src1].writing_station
 
-                if self.registers[self.issue_stage_station.instruction.src2].get_write_status():
+                if self.issue_stage_station.instruction.src2 != None and \
+                    self.registers[self.issue_stage_station.instruction.src2].get_write_status():
                     self.issue_stage_station.instruction.Vk = self.issue_stage_station.instruction.src2
                     self.issue_stage_station.instruction.Qk = self.registers[self.issue_stage_station.instruction.src2].writing_station
 
@@ -219,10 +232,8 @@ initial_values = ["R1 10", "R2 11", "R3 12", "R4 13", "F2 5.4"]
 rs_manager = ReservationStationManager(station_counts, execution_times, initial_values)
 
 # List of instructions to be issued
-instructions = ["ADD R1, R2, R3", "ADD R1, R2, R3", "ADD R7, R3, R3", "ADD R2, R7, R3", "MUL R4, R2, R6", "ADD R4, R8, R7", "ADD F1, F2, F3"]
+instructions = ["ADD R1, R2, R3", "ADDI R1, R2, #3", "ADD R7, R3, R3", "ADD R2, R7, R3", "MUL R4, R2, R6", "ADD R4, R8, R7", "ADD F1, F2, F3"]
 # instructions = ["ADD R1, R2, R3", "ADD R4, R1, R3"]
-
-
 
 # Add all instructions to the manager's queue right away
 for instr in instructions:
