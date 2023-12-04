@@ -63,6 +63,9 @@ class TomasuloGUI:
         self.next_button = tk.Button(self.control_frame, text="Next", command=self.next_cycle)
         self.next_button.pack(side=tk.LEFT)
 
+        self.cycle_label = tk.Label(self.control_frame, text="Current Cycle:")
+        self.cycle_label.pack(side=tk.LEFT)
+
         self.reset_button = tk.Button(self.control_frame, text="Reset", command=self.reset_cycle)
         self.reset_button.pack(side=tk.LEFT)
 
@@ -95,6 +98,9 @@ class TomasuloGUI:
                 self.int_reg_table.insert("", "end", values=(reg_name, reg_value))
         for reg_name, reg_value in self.floating_registers.items():
             self.float_reg_table.insert("", "end", values=(reg_name, reg_value))
+        
+        # Update the cycle label
+        self.cycle_label['text'] = f"Current Cycle: {self.current_cycle}"
 
     def next_cycle(self):
         if self.current_cycle < len(self.cycles_data):
