@@ -96,9 +96,9 @@ class ReservationStation:
         if self.instruction:
             stage = self.stage
             if self.instruction.src2 != None:
-                return f"{self.name}, {stage}, {self.remaining_cycles}, {self.instruction.op}, {self.instruction.src1}, {self.instruction.src2}, {self.instruction.dest}, {self.instruction.Vj}, {self.instruction.Vk}, {self.instruction.Qj}, {self.instruction.Qk}"
+                return f"{self.instruction.instruction_str}, {self.name}, {stage}, {self.remaining_cycles}, {self.instruction.src1}, {self.instruction.src2}, {self.instruction.dest}, {self.instruction.Vj}, {self.instruction.Vk}, {self.instruction.Qj}, {self.instruction.Qk}"
             else:
-                return f"{self.name}, {stage}, {self.remaining_cycles}, {self.instruction.op}, {self.instruction.src1}, {self.instruction.immediate}, {self.instruction.dest}, {self.instruction.Vj}, {self.instruction.Vk}, {self.instruction.Qj}, {self.instruction.Qk}"
+                return f"{self.instruction.instruction_str}, {self.name}, {stage}, {self.remaining_cycles}, {self.instruction.src1}, {self.instruction.immediate}, {self.instruction.dest}, {self.instruction.Vj}, {self.instruction.Vk}, {self.instruction.Qj}, {self.instruction.Qk}"
         else:
             stage = "Idle"
             return f"{self.name}, {stage}, {self.remaining_cycles}"

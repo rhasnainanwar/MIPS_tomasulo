@@ -67,7 +67,7 @@ class TomasuloGUI:
         self.reset_button.pack(side=tk.LEFT)
 
         # Add tables for reservation stations, integer registers, and floating point registers
-        self.rs_table = create_table(self.data_frame, ["Name", "Stage", "Remaining Cycles", "Op", "Src1", "Src2", "Dest", "Vj", "Vk", "Qj", "Qk"])
+        self.rs_table = create_table(self.data_frame, ["Instr", "Name", "Stage", "Cycles Left", "Src1", "Src2", "Dest", "Vj", "Vk", "Qj", "Qk"])
         self.rs_table.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         self.int_reg_table = create_table(self.data_frame, ["Int Register", "Value"])
