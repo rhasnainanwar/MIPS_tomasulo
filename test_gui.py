@@ -8,8 +8,11 @@ def parse_log_file(filepath):
 
     cycles = {}
     integer_registers_used = set()
-    floating_registers = {f'F{i}': '0.0' for i in range(1, 33)}  # Initialize floating point registers
-    current_cycle = None
+    mem_registers_used = set()
+
+    # mem_registers = set()
+    mem_registers = {f'M{i*8}': '0' for i in range(0, 31)}  # Initialize mem registers
+    # current_cycle = None
     for line in lines:
         if line.startswith('Cycle'):
             current_cycle = int(line.split()[1][:-1])
@@ -20,16 +23,13 @@ def parse_log_file(filepath):
                 parts = rs.split(', ')
                 if parts[1] != "Idle":
                     integer_registers_used.update(filter(lambda r: r.startswith('R'), parts[4:7]))  # src1, src2, dest
+                    mem_registers_used.update(filter(lambda r: r.startswith('M'), parts[4:7]))  # src1, src2, dest
             cycles[current_cycle]['reservation_stations'] = reservation_stations
         elif line.startswith("register_values:"):
             register_values = eval(line.split(':', 1)[1].strip())
-            for reg in register_values:
-                reg_name, reg_value = reg.split(', ')
-                if reg_name.startswith('F'):
-                    floating_registers[reg_name] = reg_value
             cycles[current_cycle]['register_values'] = register_values
 
-    return cycles, integer_registers_used, floating_registers
+    return cycles, integer_registers_used, mem_registers_used
 
 # Function to create a styled Treeview for table-like data presentation
 def create_table(parent, columns, show_header=True, height=100):
@@ -44,7 +44,7 @@ class TomasuloGUI:
     def __init__(self, root, log_filepath):
         self.root = root
         self.root.title("Tomasulo Simulator GUI")
-        self.cycles_data, self.integer_registers_used, self.floating_registers = parse_log_file(log_filepath)
+        self.cycles_data, self.integer_registers_used, self.mem_registers_used = parse_log_file(log_filepath)
         self.current_cycle = 1
         self.setup_gui()
 
@@ -76,15 +76,15 @@ class TomasuloGUI:
         self.int_reg_table = create_table(self.data_frame, ["Int Register", "Value"])
         self.int_reg_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.float_reg_table = create_table(self.data_frame, ["Float Register", "Value"])
-        self.float_reg_table.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        self.mem_reg_table = create_table(self.data_frame, ["Memory Value", "Value"])
+        self.mem_reg_table.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
         # Load initial cycle data
         self.load_cycle_data()
 
     def load_cycle_data(self):
         # Clear existing data in tables
-        for table in [self.rs_table, self.int_reg_table, self.float_reg_table]:
+        for table in [self.rs_table, self.int_reg_table, self.mem_reg_table]:
             for row in table.get_children():
                 table.delete(row)
 
@@ -96,12 +96,8 @@ class TomasuloGUI:
             reg_name, reg_value = reg.split(', ')
             if reg_name in self.integer_registers_used:
                 self.int_reg_table.insert("", "end", values=(reg_name, reg_value))
-        for reg_name, reg_value in self.floating_registers.items():
-            self.float_reg_table.insert("", "end", values=(reg_name, reg_value))
-        
-        # Update the cycle label
-        self.cycle_label['text'] = f"Current Cycle: {self.current_cycle}"
-
+            elif reg_name in self.mem_registers_used:
+                self.mem_reg_table.insert("", "end", values=(reg_name, reg_value))
     def next_cycle(self):
         if self.current_cycle < len(self.cycles_data):
             self.current_cycle += 1

@@ -76,6 +76,37 @@ class ReservationStation:
         self.execution_time = execution_time  # Time needed to execute an operation
         self.is_writing = False        # Flag to indicate if the station is in the write stage
         self.reset()                   # Reset the station to its initial state
+    
+    def assign_station(self, type):
+        return True if type in self.op_types else False
+    
+    def perform_write(self, registers):
+        # Assuming 'self.instruction' is an instance of the 'Instruction' class
+        # and contains the operation (op), destination (dest), and source registers (src1, src2)
+        op = self.instruction.op
+        dest = self.instruction.dest
+        src1 = self.instruction.src1
+        src2 = self.instruction.src2
+
+        # Assuming 'self.registers' is a dictionary storing the values of the registers
+        if op == "ADD":
+            registers[dest].value = registers[src1].value + registers[src2].value
+        elif op == "SUB":
+            registers[dest].value = registers[src1].value - registers[src2].value
+        elif op == "MUL":
+            registers[dest].value = registers[src1].value * registers[src2].value
+        elif op == "DIV":
+            registers[dest].value = registers[src1].value / registers[src2].value
+        elif op == "ADDI":
+            registers[dest].value = registers[src1].value + registers[src2].value
+        elif op == "SUBI":
+            registers[dest].value = registers[src1].value - registers[src2].value
+        elif op == "MULI":
+            registers[dest].value = registers[src1].value * registers[src2].value
+        elif op == "DIVI":
+            registers[dest].value = registers[src1].value / registers[src2].value
+        elif op in ["LOAD", "STORE"]:
+            registers[dest].value = registers[src1].value
 
     # Load an instruction into the reservation station
     def load_instruction(self, instruction):
@@ -89,6 +120,8 @@ class ReservationStation:
         self.instruction = None        # Clear the instruction
         self.stage = "Idle"            # Set the stage to 'Idle'
         self.remaining_cycles = 0      # Reset remaining cycles
+    
+    
 
     def __str__(self):
         # String representation of the reservation station's status
