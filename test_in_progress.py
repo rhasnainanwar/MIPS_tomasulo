@@ -293,36 +293,40 @@ class ReservationStationManager:
                             station.remaining_cycles -= 1
                             self.write_stage_station = station
                         else:
-                            if station.instruction.op == "BRANCH":
+                        
+                            for name, station in self.stations.items():
+                                if station.busy and station.instruction.index < self.instruction_queue_index:
+                                    all_stations_idle = False
+                                    break
+                            if not all_stations_idle:
+                                continue     
+                            elif station.instruction.op == "BRANCH":
                                 # self.flush_stations(self.instruction_queue_index)
                                 self.instruction_queue_index = station.instruction.A
                                 self.branching_station = None
-
                                 station.reset()
                             
                             elif station.instruction.op == "BEQZ":
                                 if self.registers[station.instruction.src1].value == 0:
                                     # self.flush_stations(self.instruction_queue_index)
                                     self.instruction_queue_index = station.instruction.A
-                                    self.branching_station = None
+                                self.branching_station = None
                                 station.reset()
-
-
 
                             elif station.instruction.op == "BNEQZ":
                                 if self.registers[station.instruction.src1].value != 0:
                                     # self.flush_stations(self.instruction_queue_index)
                                     self.instruction_queue_index = station.instruction.A
-                                    self.branching_station = None
-
                                 station.reset()
+                                self.branching_station = None
+
 
 
                             # Perform Branch
 
 
-                if station.stage != "Idle":
-                    all_stations_idle = False
+            if station.stage != "Idle":
+                all_stations_idle = False
 
         return all_stations_idle
 
@@ -336,7 +340,7 @@ station_counts = {"ADD": 2, "MUL": 2, "DIV": 1, "STORE": 2, "BRANCH": 1}
 optypes = {"ADD": ["ADD", "SUB", "DADDI", "DSUBI"], "MUL": ["MUL", "MULI"], "DIV": ["DIV", "DIVI"], "STORE": ["STORE", "LOAD"], "BRANCH": ["BRANCH", "BEQZ", "BNEQZ"]}
 
 # Initialize the Reservation Station Manager with initial register values
-initial_values = ["R1 10", "R2 10", "R3 80", "R4 13", "R5 14", "R6 15", "R7 16","M0 8", "M8 16", "M16 32", "M24 64", "M32 128"]
+initial_values = ["R1 80", "R2 10", "R3 80", "R4 13", "R5 14", "R6 15", "R7 16","M0 8", "M8 16", "M16 32", "M24 64", "M32 128"]
 # initial_values = ["M0 8", "M8 16", "M16 32", "M24 64", "M32 128"]
 
 rs_manager = ReservationStationManager(station_counts, execution_times, optypes, initial_values)
@@ -345,10 +349,10 @@ rs_manager = ReservationStationManager(station_counts, execution_times, optypes,
 # instructions = ["SUB R1, R2, R3", "ADD R1, R2, R3", "ADD R7, R3, R3", "ADD R2, R7, R3", "MUL R4, R2, R6", "ADD R4, R8, R7"]
 # instructions = ["ADD R1, R1, R3", "ADD R4, R5, R3", "DSUBI R10, R1, #100"]
 # instructions = ["ADD R1, R1, R3", "ADD R4, R5, R3", "DSUBI R10, R1, #100", "BNEQZ R10, 0, #0", "LOAD R1, M8, X",  "DADDI R5, R10, #100", "STORE M8, R5, X"]
-# instructions = ["ADD R1, R1, R3", "ADD R4, R5, R3", "DSUBI R10, R1, #100", "BNEQZ R10, 0, #0", "LOAD R1, M8, X",  "DADDI R5, R10, #100", "STORE M8, R5, X"]
+instructions = ["ADD R1, R1, R2", "BNEQZ R10, 0, X", "LOAD R1, M8, X"]
 
 
-instructions = ["LOAD R1, M8, X",  "DADDI R5, R5, #100", "STORE M8, R5, X", "DSUBI R10, R1, #100"]
+# instructions = ["LOAD R1, M8, X",  "DADDI R5, R5, #100", "STORE M8, R5, X", "DSUBI R10, R1, #100"]
 
 rs_manager.add_instruction(instructions)
 
