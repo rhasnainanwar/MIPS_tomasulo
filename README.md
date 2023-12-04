@@ -5,7 +5,7 @@
 - [x] GUI
 - [ ] Display cycle number on top
 - [ ] Display contents of reservation stations
-- [ ] Intermediate ADD and SUB
+- [x] Intermediate ADD and SUB
 - [ ] Update register values
 - [ ] Separate INT and FLOAT registers
 - [ ] Branch
