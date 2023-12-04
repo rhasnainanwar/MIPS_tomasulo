@@ -98,6 +98,8 @@ class TomasuloGUI:
                 self.int_reg_table.insert("", "end", values=(reg_name, reg_value))
             elif reg_name in self.mem_registers_used:
                 self.mem_reg_table.insert("", "end", values=(reg_name, reg_value))
+        # Update the cycle label
+        self.cycle_label['text'] = f"Current Cycle: {self.current_cycle}"
     def next_cycle(self):
         if self.current_cycle < len(self.cycles_data):
             self.current_cycle += 1
