@@ -7,7 +7,7 @@
 - [ ] Display contents of reservation stations
 - [x] Intermediate ADD and SUB
 - [x] Update register values
-- [ ] Branch
+- [x] Branch
 
 
 # References
