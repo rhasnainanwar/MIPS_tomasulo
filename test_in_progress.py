@@ -353,7 +353,7 @@ rs_manager = ReservationStationManager(station_counts, execution_times, optypes,
 # List of instructions to be issued
 # instructions = ["SUB R1, R2, R3", "ADD R1, R2, R3", "ADD R7, R3, R3", "ADD R2, R7, R3", "MUL R4, R2, R6", "ADD R4, R8, R7"]
 # instructions = ["ADD R1, R1, R3", "ADD R4, R5, R3", "DSUBI R10, R1, #100"]
-instructions = ["LOAD R2, M0, X", "DADDI R4, R2, #10",  "ADD R1, R4, R3", "ADD R1, R1, R6", "SUB R6, R6, R5" "DSUBI R10, R1, #100", "BNEQZ R10, 0, #0",  "STORE M8, R5, X"]
+instructions = ["LOAD R2, M0, X", "DADDI R4, R2, #10",  "ADD R1, R4, R3", "ADD R1, R1, R6", "SUB R6, R6, R5","DSUBI R10, R1, #100", "BNEQZ R10, 0, #0",  "STORE M8, R5, X"]
 # instructions = ["ADD R1, R1, R2", "BNEQZ R10, 0, X", "LOAD R1, M8, X"]
 
 
