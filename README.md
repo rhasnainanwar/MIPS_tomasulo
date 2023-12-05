@@ -4,7 +4,7 @@
 - [x] RAW and WAW Hazards
 - [x] GUI
 - [x] Display cycle number on top
-- [ ] Display contents of reservation stations
+- [x] Display contents of reservation stations
 - [x] Intermediate ADD and SUB
 - [x] Update register values
 - [x] Branch
