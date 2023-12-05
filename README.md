@@ -6,7 +6,7 @@
 - [x] Display cycle number on top
 - [ ] Display contents of reservation stations
 - [x] Intermediate ADD and SUB
-- [ ] Update register values
+- [x] Update register values
 - [ ] Branch
 
 
