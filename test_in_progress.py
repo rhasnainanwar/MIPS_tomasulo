@@ -337,10 +337,15 @@ class ReservationStationManager:
 # Execution times and station counts for different instruction types
 execution_times = {"ADD": 4, "MUL": 1, "DIV": 40, "STORE": 3, "BRANCH": 3}
 station_counts = {"ADD": 2, "MUL": 2, "DIV": 1, "STORE": 2, "BRANCH": 1}
-optypes = {"ADD": ["ADD", "SUB", "DADDI", "DSUBI"], "MUL": ["MUL", "MULI"], "DIV": ["DIV", "DIVI"], "STORE": ["STORE", "LOAD"], "BRANCH": ["BRANCH", "BEQZ", "BNEQZ"]}
+optypes = { "ADD": ["ADD", "SUB", "DADDI", "DSUBI"],
+           "MUL": ["MUL", "MULI"],
+           "DIV": ["DIV", "DIVI"],
+           "STORE": ["STORE", "LOAD"],
+           "BRANCH": ["BRANCH", "BEQZ", "BNEQZ"]}
 
 # Initialize the Reservation Station Manager with initial register values
-initial_values = ["R1 80", "R2 10", "R3 80", "R4 13", "R5 14", "R6 15", "R7 16","M0 8", "M8 16", "M16 32", "M24 64", "M32 128"]
+initial_values = ["R1 80", "R2 10", "R3 80", "R4 20", "R5 5", "R6 10", "R7 16",
+                  "M0 10", "M8 16", "M16 32", "M24 64", "M32 128"]
 # initial_values = ["M0 8", "M8 16", "M16 32", "M24 64", "M32 128"]
 
 rs_manager = ReservationStationManager(station_counts, execution_times, optypes, initial_values)
@@ -348,8 +353,8 @@ rs_manager = ReservationStationManager(station_counts, execution_times, optypes,
 # List of instructions to be issued
 # instructions = ["SUB R1, R2, R3", "ADD R1, R2, R3", "ADD R7, R3, R3", "ADD R2, R7, R3", "MUL R4, R2, R6", "ADD R4, R8, R7"]
 # instructions = ["ADD R1, R1, R3", "ADD R4, R5, R3", "DSUBI R10, R1, #100"]
-# instructions = ["ADD R1, R1, R3", "ADD R4, R5, R3", "DSUBI R10, R1, #100", "BNEQZ R10, 0, #0", "LOAD R1, M8, X",  "DADDI R5, R10, #100", "STORE M8, R5, X"]
-instructions = ["ADD R1, R1, R2", "BNEQZ R10, 0, X", "LOAD R1, M8, X"]
+instructions = ["LOAD R2, M0, X", "DADDI R4, R2, #10",  "ADD R1, R4, R3", "ADD R1, R1, R6", "SUB R6, R6, R5" "DSUBI R10, R1, #100", "BNEQZ R10, 0, #0",  "STORE M8, R5, X"]
+# instructions = ["ADD R1, R1, R2", "BNEQZ R10, 0, X", "LOAD R1, M8, X"]
 
 
 # instructions = ["LOAD R1, M8, X",  "DADDI R5, R5, #100", "STORE M8, R5, X", "DSUBI R10, R1, #100"]
