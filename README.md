@@ -8,7 +8,7 @@
 - [x] Intermediate ADD and SUB
 - [x] Update register values
 - [x] Branch
-
+- [x] Memory support
 
 # References
 
