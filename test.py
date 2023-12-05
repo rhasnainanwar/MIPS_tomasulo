@@ -28,22 +28,16 @@ class Instruction:
         self.op = parts[0]
 
         # Parse based on operation type
-        if self.op in ["ADD", "DADDI", "SUB", "MUL", "DIV"]:
-            # For arithmetic instructions
-            if self.op[-1] == "I":
-                self.op = self.op[1:-1]
-                # For immediate addition
-                self.dest, self.src1, self.immediate = parts[1], parts[2], parts[3][1:]
-            else:
-                self.dest, self.src1, self.src2 = parts[1], parts[2], parts[3]
+        if self.op in ["ADD", "SUB", "MUL", "DIV"]:
+            self.dest, self.src1, self.src2 = parts[1], parts[2], parts[3]
+        elif self.op in ["DADDI", "DSUBI", "MULI", "DIVI"]:
+            self.dest, self.src1, self.immediate = parts[1], parts[2], parts[3][1:]
         elif self.op in ["STORE", "LOAD"]:
-            # For memory operations
-            self.src1, offset_reg = parts[1], parts[2]
-            self.immediate, self.src2 = offset_reg.split('(')
-            self.src2 = self.src2[:-1]  # Removing the closing parenthesis
-        elif self.op == "BRANCH":
-            # For branch instructions
-            self.src1, self.src2, self.immediate = parts[1], parts[2], parts[3]
+            self.dest, self.src1, self.src2 = parts[1], parts[2], parts[3]
+        elif self.op in ["BRANCH", "BEQZ", "BNEQZ"]:
+            self.src1, self.A, self.src2, self.dest = parts[1], int(''.join(filter(str.isdigit, parts[2]))), "X", "X"
+    def set_instruction_index(self, index):
+        self.index = index
 
 # Class for representing a register in the processor
 class Register:
@@ -70,9 +64,10 @@ class Register:
 
 # Class for representing a reservation station
 class ReservationStation:
-    def __init__(self, name, op_type, execution_time):
+    def __init__(self, name, op_type, execution_time, op_types = []):
         self.name = name               # Station name
         self.op_type = op_type         # Operation type handled by this station
+        self.op_types = op_types
         self.execution_time = execution_time  # Time needed to execute an operation
         self.is_writing = False        # Flag to indicate if the station is in the write stage
         self.reset()                   # Reset the station to its initial state
@@ -90,27 +85,30 @@ class ReservationStation:
 
         # Assuming 'self.registers' is a dictionary storing the values of the registers
         if op == "ADD":
-            registers[dest].value = registers[src1].value + registers[src2].value
+            registers[dest].value = self.instruction.Vj + self.instruction.Vk
         elif op == "SUB":
-            registers[dest].value = registers[src1].value - registers[src2].value
+            registers[dest].value = self.instruction.Vj - self.instruction.Vk
         elif op == "MUL":
-            registers[dest].value = registers[src1].value * registers[src2].value
+            registers[dest].value = self.instruction.Vj * self.instruction.Vk
         elif op == "DIV":
-            registers[dest].value = registers[src1].value / registers[src2].value
-        elif op == "ADDI":
-            registers[dest].value = registers[src1].value + registers[src2].value
-        elif op == "SUBI":
-            registers[dest].value = registers[src1].value - registers[src2].value
+            registers[dest].value = self.instruction.Vj / self.instruction.Vk
+        elif op == "DADDI":
+            registers[dest].value = self.instruction.Vj + self.instruction.Vk
+        elif op == "DSUBI":
+            registers[dest].value = self.instruction.Vj - self.instruction.Vk
         elif op == "MULI":
-            registers[dest].value = registers[src1].value * registers[src2].value
+            registers[dest].value = self.instruction.Vj * self.instruction.Vk
         elif op == "DIVI":
-            registers[dest].value = registers[src1].value / registers[src2].value
+            registers[dest].value = self.instruction.Vj / self.instruction.Vk
         elif op in ["LOAD", "STORE"]:
-            registers[dest].value = registers[src1].value
+            registers[dest].value = self.instruction.Vj
+        # elif op in ["BRANCH", "BEQZ", "BNEQZ"]:
+        #     self.branching_station = None
 
     # Load an instruction into the reservation station
-    def load_instruction(self, instruction):
-        self.instruction = instruction  # Load the instruction
+    def load_instruction(self, instruction, index):
+        self.instruction = instruction # Instruction(instruction)  # Parse and load the instruction
+        self.instruction.set_instruction_index(index)
         self.stage = 'Issue'           # Set the initial stage to 'Issue'
         self.remaining_cycles = self.execution_time + 1  # Set the remaining cycles for execution
 
@@ -120,8 +118,6 @@ class ReservationStation:
         self.instruction = None        # Clear the instruction
         self.stage = "Idle"            # Set the stage to 'Idle'
         self.remaining_cycles = 0      # Reset remaining cycles
-    
-    
 
     def __str__(self):
         # String representation of the reservation station's status
@@ -139,20 +135,24 @@ class ReservationStation:
 
 # Manager class for handling multiple reservation stations
 class ReservationStationManager:
-    def __init__(self, station_counts, execution_times, initial_values):
+    def __init__(self, station_counts, execution_times, optypes, initial_values):
         self.stations = {}             # Dictionary to store reservation stations
         self.instruction_queue = []    # Queue for holding instructions to be issued
+        self.instruction_queue_index = 0 # Index
         self.issue_stage_station = None  # Current station in the issue stage
         self.write_stage_station = None  # Current station in the write stage
+        self.branching_station = None # Current station in the branch
         self.initialise_registers(initial_values)  # Initialize registers with given values
-        self.create_stations(station_counts, execution_times)  # Create the reservation stations
+        self.create_stations(station_counts, execution_times, optypes)  # Create the reservation stations
 
     def initialise_registers(self, initial_values):
         # Initialize general and floating-point registers and set their initial values
         # General registers
         self.registers = {f"R{i}": Register(f"R{i}") for i in range(1, 32)}
         # Floating-point registers
-        self.registers.update({f"F{i}": Register(f"F{i}", 'float', 0.0) for i in range(1, 32)})
+        self.registers.update({f"I{i}": Register(f"I{i}", 'int', i) for i in range(0, 101)})
+        self.registers.update({f"M{i*8}": Register(f"M{i*8}", 'int', i) for i in range(0, 31)})
+
 
         for value in initial_values:
             # Update register values as per the provided initial values
@@ -163,32 +163,43 @@ class ReservationStationManager:
                 self.registers[register_name].value = new_value
             else:
                 print(f"Register {register_name} not found.")
+        self.registers["X"]  = Register("X")
 
-    def create_stations(self, station_counts, execution_times):
+    def create_stations(self, station_counts, execution_times, optypes):
         # Create reservation stations based on the given counts and execution times
         for op_type, count in station_counts.items():
             for i in range(count):
                 name = f"{op_type}_{i+1}"
-                self.stations[name] = ReservationStation(name, op_type, execution_times[op_type])
+                self.stations[name] = ReservationStation(name, op_type, execution_times[op_type], optypes[op_type])
 
-    def add_instruction(self, instruction):
+    def flush_stations(self, flush_index):
+        for name, station in self.stations.items():
+                if station.busy and station.instruction.index > flush_index:
+                    station.reset()
+
+    def add_instruction(self, instructions):
         # Add an instruction to the queue
-        self.instruction_queue.append(instruction)
+        self.instruction_queue = instructions
 
     def try_issue_instruction(self):
         # Try to issue the first instruction in the queue if there are no WAW hazards
-        if self.instruction_queue:
-            instruction = Instruction(self.instruction_queue[0])  # Parse and load the instruction
+        if self.branching_station:
+            return None
+        if self.instruction_queue_index != len(self.instruction_queue):
+            instruction = Instruction(self.instruction_queue[self.instruction_queue_index])
             write_Reg = self.registers[instruction.dest]
             if write_Reg.get_write_status():
                 return None  # Stall due to WAW hazard
-            
+
             for name, station in self.stations.items():
-                if station.op_type == instruction.op and not station.busy:
-                    station.load_instruction(instruction)
-                    self.instruction_queue.pop(0)
+                if station.assign_station(instruction.op) and not station.busy:
+                    self.instruction_queue_index+=1
+                    station.load_instruction(instruction, self.instruction_queue_index)
                     print(station.name)
-                    self.registers[instruction.dest].set_write_status(station.name)
+                    if instruction.op not in ["BRANCH", "BEQZ", "BNEQZ"]:
+                        self.registers[instruction.dest].set_write_status(station.name)
+                    else:
+                        self.branching_station = station
                     station.busy = True
                     return station
         return None
@@ -197,7 +208,9 @@ class ReservationStationManager:
         # Execute a cycle, handling the stages of each reservation station
         # Clear the write stage station and update the register status
         if self.write_stage_station:
-            self.registers[self.write_stage_station.instruction.dest].clear_write_status()
+            self.write_stage_station.perform_write(self.registers)
+            reg = self.write_stage_station.instruction.dest
+            self.registers[reg].clear_write_status()
             self.write_stage_station.reset()
             self.write_stage_station = None
 
@@ -229,17 +242,31 @@ class ReservationStationManager:
                 self.issue_stage_station.stage = 'Execute'
                 self.issue_stage_station = None
             else:
-                start_next_issue = False
+                if self.registers[self.issue_stage_station.instruction.src1].writing_station == self.issue_stage_station.name:
+                    self.issue_stage_station.instruction.Vj = self.registers[self.issue_stage_station.instruction.src1].value
+                    self.issue_stage_station.instruction.Qj = None
+
+                if self.issue_stage_station.instruction.src2 and self.registers[self.issue_stage_station.instruction.src2].writing_station == self.issue_stage_station.name:
+                    self.issue_stage_station.instruction.Vk = self.registers[self.issue_stage_station.instruction.src2].value
+                    self.issue_stage_station.instruction.Qk = None
+
+                if self.issue_stage_station.instruction.Qj == None and self.issue_stage_station.instruction.Qk == None:
+                    self.issue_stage_station.stage = 'Execute'
+                    self.issue_stage_station = None
+                else:
+                    start_next_issue = False  
                 
 
         # Attempt to issue an instruction if possible
         if start_next_issue:
             self.issue_stage_station = self.try_issue_instruction()
-            # waiting for reservation stations to produce the required values
             if self.issue_stage_station:
                 if self.registers[self.issue_stage_station.instruction.src1].get_write_status():
                     self.issue_stage_station.instruction.Vj = self.issue_stage_station.instruction.src1
                     self.issue_stage_station.instruction.Qj = self.registers[self.issue_stage_station.instruction.src1].writing_station
+                else:
+                    self.issue_stage_station.instruction.Vj = self.registers[self.issue_stage_station.instruction.src1].value
+                    self.issue_stage_station.instruction.Qj = None
 
                 if self.issue_stage_station.instruction.src2 == None:
                     self.issue_stage_station.instruction.Vk = int(self.issue_stage_station.instruction.immediate)
@@ -247,6 +274,10 @@ class ReservationStationManager:
                 elif self.registers[self.issue_stage_station.instruction.src2].get_write_status():
                     self.issue_stage_station.instruction.Vk = self.issue_stage_station.instruction.src2
                     self.issue_stage_station.instruction.Qk = self.registers[self.issue_stage_station.instruction.src2].writing_station
+                else:
+                    self.issue_stage_station.instruction.Vk =self.registers[ self.issue_stage_station.instruction.src2].value
+                    self.issue_stage_station.instruction.Qk = None
+       
 
         all_stations_idle = True
         # Process each reservation station
@@ -257,12 +288,48 @@ class ReservationStationManager:
                     if station.remaining_cycles > 1:
                         station.remaining_cycles -= 1
                     elif not self.write_stage_station:
-                        station.stage = 'Write'
-                        station.remaining_cycles -= 1
-                        self.write_stage_station = station
+                        if station.instruction.op not in ["BRANCH", "BEQZ", "BNEQZ"]:
+                            station.stage = 'Write'
+                            station.remaining_cycles -= 1
+                            self.write_stage_station = station
+                        else:
+                        
+                            for name, station in self.stations.items():
+                                if station.busy and station.instruction.index < self.instruction_queue_index:
+                                    all_stations_idle = False
+                                    break
+                            if not all_stations_idle:
+                                continue     
+                            elif station.instruction.op == "BRANCH":
+                                # self.flush_stations(self.instruction_queue_index)
+                                self.instruction_queue_index = station.instruction.A
+                                self.branching_station = None
+                                station.reset()
+                                self.execute_cycle()
+                            
+                            elif station.instruction.op == "BEQZ":
+                                if self.registers[station.instruction.src1].value == 0:
+                                    # self.flush_stations(self.instruction_queue_index)
+                                    self.instruction_queue_index = station.instruction.A
+                                self.branching_station = None
+                                station.reset()
+                                self.execute_cycle()
 
-                if station.stage != "Idle":
-                    all_stations_idle = False
+                            elif station.instruction.op == "BNEQZ":
+                                if self.registers[station.instruction.src1].value != 0:
+                                    # self.flush_stations(self.instruction_queue_index)
+                                    self.instruction_queue_index = station.instruction.A
+                                station.reset()
+                                self.branching_station = None
+                                self.execute_cycle()
+
+
+
+                            # Perform Branch
+
+
+            if station.stage != "Idle":
+                all_stations_idle = False
 
         return all_stations_idle
 
@@ -271,20 +338,36 @@ class ReservationStationManager:
         return {name: str(station) for name, station in self.stations.items()}
 
 # Execution times and station counts for different instruction types
-execution_times = {"ADD": 4, "MUL": 1, "DIV": 40, "STORE": 3, "BRANCH": 1}
+execution_times = {"ADD": 4, "MUL": 1, "DIV": 40, "STORE": 3, "BRANCH": 3}
 station_counts = {"ADD": 2, "MUL": 2, "DIV": 1, "STORE": 2, "BRANCH": 1}
+optypes = { "ADD": ["ADD", "SUB", "DADDI", "DSUBI"],
+           "MUL": ["MUL", "MULI"],
+           "DIV": ["DIV", "DIVI"],
+           "STORE": ["STORE", "LOAD"],
+           "BRANCH": ["BRANCH", "BEQZ", "BNEQZ"]}
 
 # Initialize the Reservation Station Manager with initial register values
-initial_values = ["R1 10", "R2 11", "R3 12", "R4 13", "F2 5.4"]
-rs_manager = ReservationStationManager(station_counts, execution_times, initial_values)
+initial_values = ["R1 80", "R2 10", "R3 80", "R4 20", "R5 5", "R6 10", "R7 16",
+                  "M0 10", "M8 16", "M16 32", "M24 64", "M32 128"]
+# initial_values = ["M0 8", "M8 16", "M16 32", "M24 64", "M32 128"]
+
+rs_manager = ReservationStationManager(station_counts, execution_times, optypes, initial_values)
 
 # List of instructions to be issued
-instructions = ["ADD R1, R2, R3", "DADDI R1, R2, #3", "ADD R7, R3, R3", "ADD R2, R7, R3", "MUL R4, R2, R6", "ADD R4, R8, R7", "ADD F1, F2, F3"]
-# instructions = ["ADD R1, R2, R3", "ADD R4, R1, R3"]
+# instructions = ["SUB R1, R2, R3", "ADD R1, R2, R3", "ADD R7, R3, R3", "ADD R2, R7, R3", "MUL R4, R2, R6", "ADD R4, R8, R7"]
+# instructions = ["ADD R1, R1, R3", "ADD R4, R5, R3", "DSUBI R10, R1, #100"]
+instructions = ["LOAD R2, M0, X", "DADDI R4, R2, #10",  "ADD R1, R4, R3", "ADD R1, R1, R6", "SUB R6, R6, R5","DSUBI R10, R1, #100", "BNEQZ R10, 0, #0", "MUL R5, R1, R5", "STORE M8, R5, X"]
+# instructions = ["ADD R1, R1, R2", "BNEQZ R10, 0, X", "LOAD R1, M8, X"]
+
+
+# instructions = ["LOAD R1, M8, X",  "DADDI R5, R5, #100", "STORE M8, R5, X", "DSUBI R10, R1, #100"]
+
+rs_manager.add_instruction(instructions)
+
+
 
 # Add all instructions to the manager's queue right away
-for instr in instructions:
-    rs_manager.add_instruction(instr)
+
 
 def log_rs_manager_state(rs_manager, cycle, base_file_name="log"):
     """
@@ -350,7 +433,7 @@ while True:
     for station, status in rs_manager.get_station_statuses().items():
         print(f"  {status} ")
 
-    if all_idle:
+    if all_idle and rs_manager.instruction_queue_index == len(rs_manager.instruction_queue):
         log_rs_manager_state(rs_manager, cycle)
         break
 
