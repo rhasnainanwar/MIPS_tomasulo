@@ -140,6 +140,7 @@ class ReservationStationManager:
         self.instruction_queue = []    # Queue for holding instructions to be issued
         self.instruction_queue_index = 0 # Index
         self.issue_stage_station = None  # Current station in the issue stage
+        self.issue_stage_stations = []
         self.write_stage_station = None  # Current station in the write stage
         self.branching_station = None # Current station in the branch
         self.initialise_registers(initial_values)  # Initialize registers with given values
@@ -219,64 +220,66 @@ class ReservationStationManager:
 
         start_next_issue = True
         # Handle the issue stage station
-        if self.issue_stage_station:
-            #Stall execution if RAW hazard
-
-            # Immediate Processing Case
-            if not self.registers[self.issue_stage_station.instruction.src1].get_write_status() and \
-                self.issue_stage_station.instruction.src2 == None:
-                self.issue_stage_station.instruction.Vj = self.registers[self.issue_stage_station.instruction.src1].value
-                self.issue_stage_station.instruction.Vk = int(self.issue_stage_station.instruction.immediate)
-                self.issue_stage_station.instruction.Qj = None
-                self.issue_stage_station.instruction.Qk = None
-                self.issue_stage_station.stage = 'Execute'
-                self.issue_stage_station = None
-
-            # Normal Processing Case, when no RAW hazard
-            elif not self.registers[self.issue_stage_station.instruction.src1].get_write_status() and \
-                not self.registers[self.issue_stage_station.instruction.src2].get_write_status():
-                self.issue_stage_station.instruction.Vj = self.registers[self.issue_stage_station.instruction.src1].value
-                self.issue_stage_station.instruction.Vk = self.registers[self.issue_stage_station.instruction.src2].value
-                self.issue_stage_station.instruction.Qj = None
-                self.issue_stage_station.instruction.Qk = None
-                self.issue_stage_station.stage = 'Execute'
-                self.issue_stage_station = None
-            else:
-                if self.registers[self.issue_stage_station.instruction.src1].writing_station == self.issue_stage_station.name:
-                    self.issue_stage_station.instruction.Vj = self.registers[self.issue_stage_station.instruction.src1].value
-                    self.issue_stage_station.instruction.Qj = None
-
-                if self.issue_stage_station.instruction.src2 and self.registers[self.issue_stage_station.instruction.src2].writing_station == self.issue_stage_station.name:
-                    self.issue_stage_station.instruction.Vk = self.registers[self.issue_stage_station.instruction.src2].value
-                    self.issue_stage_station.instruction.Qk = None
-
-                if self.issue_stage_station.instruction.Qj == None and self.issue_stage_station.instruction.Qk == None:
-                    self.issue_stage_station.stage = 'Execute'
-                    self.issue_stage_station = None
+        print(self.issue_stage_stations)
+        for issue_station in self.issue_stage_stations:
+            if issue_station:
+                #Stall execution if RAW hazard
+                # Immediate Processing Case
+                print(issue_station)
+                if issue_station.instruction.src1 and not self.registers[issue_station.instruction.src1].get_write_status() and \
+                    issue_station.instruction.src2 == None:
+                    issue_station.instruction.Vj = self.registers[issue_station.instruction.src1].value
+                    issue_station.instruction.Vk = int(issue_station.instruction.immediate)
+                    issue_station.instruction.Qj = None
+                    issue_station.instruction.Qk = None
+                    issue_station.stage = 'Execute'
+                    self.issue_stage_stations.remove(issue_station)
+                # Normal Processing Case, when no RAW hazard
+                elif not self.registers[issue_station.instruction.src1].get_write_status() and \
+                    not self.registers[issue_station.instruction.src2].get_write_status():
+                    issue_station.instruction.Vj = self.registers[issue_station.instruction.src1].value
+                    issue_station.instruction.Vk = self.registers[issue_station.instruction.src2].value
+                    issue_station.instruction.Qj = None
+                    issue_station.instruction.Qk = None
+                    issue_station.stage = 'Execute'
+                    self.issue_stage_stations.remove(issue_station)
                 else:
-                    start_next_issue = False  
+                    if self.registers[issue_station.instruction.src1].writing_station == issue_station.name:
+                        issue_station.instruction.Vj = self.registers[issue_station.instruction.src1].value
+                        issue_station.instruction.Qj = None
+
+                    if issue_station.instruction.src2 and self.registers[issue_station.instruction.src2].writing_station == issue_station.name:
+                        issue_station.instruction.Vk = self.registers[issue_station.instruction.src2].value
+                        issue_station.instruction.Qk = None
+
+                    if issue_station.instruction.Qj == None and issue_station.instruction.Qk == None:
+                        issue_station.stage = 'Execute'
+                        self.issue_stage_stations.remove(issue_station)
+                    # else:
+                    #     start_next_issue = False  
                 
 
         # Attempt to issue an instruction if possible
         if start_next_issue:
-            self.issue_stage_station = self.try_issue_instruction()
-            if self.issue_stage_station:
-                if self.registers[self.issue_stage_station.instruction.src1].get_write_status():
-                    self.issue_stage_station.instruction.Vj = self.issue_stage_station.instruction.src1
-                    self.issue_stage_station.instruction.Qj = self.registers[self.issue_stage_station.instruction.src1].writing_station
+            try_issue_station = self.try_issue_instruction()
+            if try_issue_station:
+                self.issue_stage_stations.append(try_issue_station)
+                if self.registers[try_issue_station.instruction.src1].get_write_status():
+                    try_issue_station.instruction.Vj = try_issue_station.instruction.src1
+                    try_issue_station.instruction.Qj = self.registers[try_issue_station.instruction.src1].writing_station
                 else:
-                    self.issue_stage_station.instruction.Vj = self.registers[self.issue_stage_station.instruction.src1].value
-                    self.issue_stage_station.instruction.Qj = None
+                    try_issue_station.instruction.Vj = self.registers[try_issue_station.instruction.src1].value
+                    try_issue_station.instruction.Qj = None
 
-                if self.issue_stage_station.instruction.src2 == None:
-                    self.issue_stage_station.instruction.Vk = int(self.issue_stage_station.instruction.immediate)
-                    self.issue_stage_station.instruction.Qk = None
-                elif self.registers[self.issue_stage_station.instruction.src2].get_write_status():
-                    self.issue_stage_station.instruction.Vk = self.issue_stage_station.instruction.src2
-                    self.issue_stage_station.instruction.Qk = self.registers[self.issue_stage_station.instruction.src2].writing_station
+                if try_issue_station.instruction.src2 == None:
+                    try_issue_station.instruction.Vk = int(try_issue_station.instruction.immediate)
+                    try_issue_station.instruction.Qk = None
+                elif self.registers[try_issue_station.instruction.src2].get_write_status():
+                    try_issue_station.instruction.Vk = try_issue_station.instruction.src2
+                    try_issue_station.instruction.Qk = self.registers[try_issue_station.instruction.src2].writing_station
                 else:
-                    self.issue_stage_station.instruction.Vk =self.registers[ self.issue_stage_station.instruction.src2].value
-                    self.issue_stage_station.instruction.Qk = None
+                    try_issue_station.instruction.Vk =self.registers[ try_issue_station.instruction.src2].value
+                    try_issue_station.instruction.Qk = None
        
 
         all_stations_idle = True
